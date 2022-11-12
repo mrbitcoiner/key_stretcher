@@ -65,8 +65,8 @@ fn set_mode(input: String) -> String {
         "low"=> {
             return String::from("low");
         }
-        "med"=>{
-            return String::from("med");
+        "mid"=>{
+            return String::from("mid");
         }
         "high"=>{
             return String::from("high");
@@ -92,7 +92,7 @@ fn main() {
     set_logger();
 
     let low:usize =  536870912; // 512MB
-    let med:usize = 1073741824; // 1GB
+    let mid:usize = 1073741824; // 1GB
     let high:usize = 2147483648; // 2GB
     let extreme:usize = 4294967296; // 4GB
 
@@ -122,8 +122,8 @@ fn main() {
         "low"=> {
             stretcher(key.trim(), low);
         }
-        "med"=>{
-            stretcher(key.trim(), med);
+        "mid"=>{
+            stretcher(key.trim(), mid);
         }
         "high"=>{
             stretcher(key.trim(), high);
