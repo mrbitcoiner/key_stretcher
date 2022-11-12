@@ -20,11 +20,6 @@
 cargo build --release
 ````
 
-### Build the source:
-````
-cargo build --release
-````
-
 ### Run the tool:
 ````
 ./target/release/key_stretcher
