@@ -1,138 +1,125 @@
-/* 
-    Rust Key Stretcher
-    By Mr. Bitcoiner
-*/
-
-use hex::encode;
-use sha2::{Sha512, Digest};
+use key_stretcher;
 use std::{io, env, process::exit};
 use log::{debug, info};
-use env_logger;
 
-fn do_hash(input: impl AsRef<[u8]>) -> [u8; 64] {
-    let mut hasher = Sha512::new();
-    hasher.update(&input);
-    let hash = hasher.finalize();
-    let mut hash_array: [u8; 64] = [0; 64];
-    hash_array.copy_from_slice(&hash);
-    return hash_array;
+enum Difficulty {
+    LOW,
+    MID,
+    HIGH,
+    EXTREME
 }
 
-fn stretcher(input: &str, max_array_bytes: usize) {
-
-    let input_hash: [u8; 64] = do_hash(&input);
-    let mut acumulator: Vec<u8> = Vec::with_capacity(max_array_bytes);
-
-    /* Append first key hash to the acumulator */
-    for i in 0..input_hash.len(){
-        acumulator.push(input_hash[i]);
-    }
-
-    let mut acumulator_length:usize = 0;
-    let mut acumulator_round:usize = 0;
-    while acumulator_length < max_array_bytes {
-        /* Append the hash of acumulator to the acumulator */
-        let new_round: [u8; 64] = do_hash(&acumulator);
-        for i in 0..new_round.len() {
-            acumulator.push(new_round[i]);
+impl Difficulty {
+    fn get_size(&self) -> usize {
+        match self {
+            Difficulty::LOW => 536870912,       // 512MB
+            Difficulty::MID => 1073741824,      // 1GB
+            Difficulty::HIGH => 2147483648,     // 2GB
+            Difficulty::EXTREME => 4294967296   // 4GB
         }
-
-        /* Increase the acumulator length */
-        let actual_acumulator_length:usize = acumulator.len();
-        for i in 0..actual_acumulator_length{
-            if acumulator.len() < max_array_bytes{
-                acumulator.push(acumulator[i]);
-            }
-            else {
-                break;
-            }
-        }
-
-        acumulator_round += 1;
-        acumulator_length = acumulator.len();
-        debug!("Key stretch round {}, acumulator size: {}MB.", acumulator_round, acumulator.len()/1024/1024);
     }
-    let mut final_hash: [u8; 64] = do_hash(&acumulator);
-    for i in 0..100{
-        final_hash = do_hash(&final_hash);
-        debug!("Hash Round: {}, hash: {}",i+1, encode(&final_hash));
-    }
-    print!("stretched_key={}", encode(&final_hash).as_str());
 }
 
-fn set_mode(input: String) -> String {
-    match input.trim() {
-        "low"=> {
-            return String::from("low");
-        }
-        "mid"=>{
-            return String::from("mid");
-        }
-        "high"=>{
-            return String::from("high");
-        }
-        "extreme"=>{
-            return String::from("extreme");
-        }
+fn set_mode(input: &str) -> &str {
+    match input {
+        "low" => "low",
+        "mid" => "mid",
+        "high" => "high",
+        "extreme" => "extreme",
         _=>{
-            print!("Memory usage modes: [ low: 512MB | mid: 1GB | high: 2GB | extreme: 4GB ]\n");
+            println!("Memory usage modes: [ low: 512MB | mid: 1GB | high: 2GB | extreme: 4GB ]");
             exit(1);
         }
     }
 }
 
-fn set_logger() {
-    if env::var("RUST_LOG").is_err() {
-        env::set_var("RUST_LOG", "error");
-    }
-    env_logger::init();
-}
-
 fn main() {
-    set_logger();
-
-    let low:usize =  536870912; // 512MB
-    let mid:usize = 1073741824; // 1GB
-    let high:usize = 2147483648; // 2GB
-    let extreme:usize = 4294967296; // 4GB
-
-    let mut mode:String = String::new();
-    let mut key:String = String::new();
+    key_stretcher::set_logger();
+    let stretch_mode: &str;
+    let mut key: String = String::new();
+    let mut stretched_key: String = String::new();
 
     let args: Vec<String> = env::args().collect();
     match env::args().len() {
         2 => {
-            mode = set_mode(args[1].to_string());
-            print!("\nInsert the key: \n");
+            stretch_mode = set_mode(args[1].trim());
+            print!("\nInsert the key: "); 
             io::stdin().read_line(&mut key).expect("Failed to read input");
         }
         3 => {
-            mode = set_mode(args[1].to_string());
-            key = args[2].to_string();
+            stretch_mode = set_mode(args[1].trim());
+            key = args[2].trim().to_owned();
         }
         _ => {
             print!("Expected args:\n\t mandatory: <memory_usage_mode> optional: <key>\n");
-            if mode.is_empty() { return; }
+            exit(1)
         }
     }
 
-    info!("Mode: {}, key: {}", mode.as_str(), key.trim());
+    info!("Mode: {}, key: {}", stretch_mode, key.trim());
 
-    match mode.as_str() {
+    match stretch_mode {
         "low"=> {
-            stretcher(key.trim(), low);
+            stretched_key = key_stretcher::stretcher(key.trim(), Difficulty::LOW.get_size());
         }
         "mid"=>{
-            stretcher(key.trim(), mid);
+            stretched_key = key_stretcher::stretcher(key.trim(), Difficulty::MID.get_size());
         }
         "high"=>{
-            stretcher(key.trim(), high);
+           stretched_key = key_stretcher::stretcher(key.trim(), Difficulty::HIGH.get_size());
         }
         "extreme"=>{
-            stretcher(key.trim(), extreme);
+            stretched_key = key_stretcher::stretcher(key.trim(), Difficulty::EXTREME.get_size());
         }
         _=>{
             exit(1);
         }
+    }
+    println!("key={}", stretched_key);
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn low_test(){
+        let expected_hash = "
+        20ce66449435872d8f60b74a94fc8d65c4782b0ee44872694783b835d06370a9
+        db589de3dc6531858093a9fd5981526f36d2b96f07913ca17192ab275a209197"
+        .replace("\n", "").replace(" ", "").to_owned();
+        let key = "123".to_owned();
+        let hash = key_stretcher::stretcher(&key, Difficulty::LOW.get_size());
+        assert_eq!(expected_hash, hash);
+    }
+    #[test]
+    fn mid_test(){
+        let expected_hash = "
+        2c52bcda18e6ee22411ae18193a6a46ebd2e9dc22d64df6b1ed0ecd2a0cf911b
+        cd6145e80aea8d027fc1f6adf4ca81e2ee7df24d7a9f37588e71b3ade0bc2076"
+        .replace("\n", "").replace(" ", "").to_owned();
+        let key = "123".to_owned();
+        let hash = key_stretcher::stretcher(&key, Difficulty::MID.get_size());
+        assert_eq!(expected_hash, hash);
+    }
+    #[test]
+    fn high_test(){
+        let expected_hash = "
+        f5ff7c2cc4397d5c391250ff89dde115e7e4886b155e6dff5305c3aed565601d
+        6d045498cfb284cef19d2329dcc0a4a9df5d393e12ea646c16037c769dbfb20e"
+        .replace("\n", "").replace(" ", "").to_owned();
+        let key = "123".to_owned();
+        let hash = key_stretcher::stretcher(&key, Difficulty::HIGH.get_size());
+        assert_eq!(expected_hash, hash);
+    }
+    #[test]
+    fn extreme_test(){
+        let expected_hash = "
+        a77838ddc448fcef151302c4bda1391fdd47f3b2b8899dbd8c8078385c9f984f
+        800dac1af09a381a9b9a1ed073625839a2e7135a120cc6ace95020d143ba7a05"
+        .replace("\n", "").replace(" ", "").to_owned();
+        let key = "123".to_owned();
+        let hash = key_stretcher::stretcher(&key, Difficulty::EXTREME.get_size());
+        assert_eq!(expected_hash, hash);
     }
 }
