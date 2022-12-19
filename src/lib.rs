@@ -1,6 +1,8 @@
 use hex::encode;
 use sha2::{Sha512, Digest};
+#[allow(unused_imports)]
 use std::{io, env, process::exit};
+#[allow(unused_imports)]
 use log::{debug, info};
 use env_logger;
 

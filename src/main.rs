@@ -1,5 +1,6 @@
 use key_stretcher;
-use std::{io, env, process::exit};
+use std::{io, io::Write, env, process::exit};
+#[allow(unused_imports)]
 use log::{debug, info};
 
 enum Difficulty {
@@ -37,13 +38,15 @@ fn main() {
     key_stretcher::set_logger();
     let stretch_mode: &str;
     let mut key: String = String::new();
+    #[allow(unused_assignments)]
     let mut stretched_key: String = String::new();
 
     let args: Vec<String> = env::args().collect();
     match env::args().len() {
         2 => {
             stretch_mode = set_mode(args[1].trim());
-            print!("\nInsert the key: "); 
+            print!("Insert the key: "); 
+            let _ = io::stdout().flush(); 
             io::stdin().read_line(&mut key).expect("Failed to read input");
         }
         3 => {
@@ -72,6 +75,7 @@ fn main() {
             stretched_key = key_stretcher::stretcher(key.trim(), Difficulty::EXTREME.get_size());
         }
         _=>{
+            println!("Error");
             exit(1);
         }
     }
