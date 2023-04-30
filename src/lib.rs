@@ -1,10 +1,8 @@
 use env_logger;
 use hex::encode;
-#[allow(unused_imports)]
-use log::{debug, info};
+use log::debug;
 use sha2::{Digest, Sha512};
-#[allow(unused_imports)]
-use std::{env, io, process::exit};
+use std::env;
 
 pub fn set_logger() {
     if env::var("RUST_LOG").is_err() {
